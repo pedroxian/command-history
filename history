@@ -1,0 +1,567 @@
+  541      do
+  542          if [[ "${COMP_WORDS[i]}" != -* ]]; then
+  543              arg=${COMP_WORDS[i]};
+  544              break;
+  545          fi;
+  546      done
+  547  }
+  548  _get_pword () 
+  549  { 
+  550      if [[ $COMP_CWORD -ge 1 ]]; then
+  551          _get_cword "${@:-}" 1;
+  552      fi
+  553  }
+  554  _gids () 
+  555  { 
+  556      if type getent &> /dev/null; then
+  557          COMPREPLY=($(compgen -W '$(getent group | cut -d: -f3)' -- "$cur"));
+  558      else
+  559          if type perl &> /dev/null; then
+  560              COMPREPLY=($(compgen -W '$(perl -e '"'"'while (($gid) = (getgrent)[2]) { print $gid . "\n" }'"'"')' -- "$cur"));
+  561          else
+  562              COMPREPLY=($(compgen -W '$(cut -d: -f3 /etc/group)' -- "$cur"));
+  563          fi;
+  564      fi
+  565  }
+  566  _have () 
+  567  { 
+  568      PATH=$PATH:/usr/sbin:/sbin:/usr/local/sbin type $1 &> /dev/null
+  569  }
+  570  _included_ssh_config_files () 
+  571  { 
+  572      [[ $# -lt 1 ]] && echo "bash_completion: $FUNCNAME: missing mandatory argument CONFIG" 1>&2;
+  573      local configfile i f;
+  574      configfile=$1;
+  575      local included=($(command sed -ne 's/^[[:blank:]]*[Ii][Nn][Cc][Ll][Uu][Dd][Ee][[:blank:]]\{1,\}\([^#%]*\)\(#.*\)\{0,1\}$/\1/p' "${configfile}"));
+  576      for i in "${included[@]}";
+  577      do
+  578          if ! [[ "$i" =~ ^\~.*|^\/.* ]]; then
+  579              if [[ "$configfile" =~ ^\/etc\/ssh.* ]]; then
+  580                  i="/etc/ssh/$i";
+  581              else
+  582                  i="$HOME/.ssh/$i";
+  583              fi;
+  584          fi;
+  585          __expand_tilde_by_ref i;
+  586          for f in ${i};
+  587          do
+  588              if [ -r $f ]; then
+  589                  config+=("$f");
+  590                  _included_ssh_config_files $f;
+  591              fi;
+  592          done;
+  593      done
+  594  }
+  595  _init_completion () 
+  596  { 
+  597      local exclude="" flag outx errx inx OPTIND=1;
+  598      while getopts "n:e:o:i:s" flag "$@"; do
+  599          case $flag in 
+  600              n)
+  601                  exclude+=$OPTARG
+  602              ;;
+  603              e)
+  604                  errx=$OPTARG
+  605              ;;
+  606              o)
+  607                  outx=$OPTARG
+  608              ;;
+  609              i)
+  610                  inx=$OPTARG
+  611              ;;
+  612              s)
+  613                  split=false;
+  614                  exclude+==
+  615              ;;
+  616          esac;
+  617      done;
+  618      COMPREPLY=();
+  619      local redir="@(?([0-9])<|?([0-9&])>?(>)|>&)";
+  620      _get_comp_words_by_ref -n "$exclude<>&" cur prev words cword;
+  621  }
+  622  _installed_modules ()  {      COMPREPLY=($(compgen -W "$(PATH="$PATH:/sbin" lsmod |         awk '{if (NR != 1) print $1}')" -- "$1")); }
+  623  _ip_addresses ()  {      local n;     case $1 in          -a)             n='6\?';         ;;         -6)             n='6';         ;;     esac;     local PATH=$PATH:/sbin;     local addrs=$({ LC_ALL=C ifconfig -a || ip addr show; } 2>/dev/null |
+  624          command sed -e 's/[[:space:]]addr:/ /' -ne             "s|.*inet${n}[[:space:]]\{1,\}\([^[:space:]/]*\).*|\1|p");     COMPREPLY+=($(compgen -W "$addrs" -- "$cur")); }
+  625  _kernel_versions ()  {      COMPREPLY=($(compgen -W '$(command ls /lib/modules)' -- "$cur")); }
+  626  _known_hosts ()  {      local cur prev words cword;     _init_completion -n : || return;     local options;     [[ "$1" == -a || "$2" == -a ]] && options=-a;     [[ "$1" == -c || "$2" == -c ]] && options+=" -c";     _known_hosts_real $options -- "$cur"; }
+  627  _known_hosts_real ()  {      local configfile flag prefix OIFS=$IFS;     local cur user suffix aliases i host ipv4 ipv6;     local -a kh tmpkh khd config;     local OPTIND=1;     while getopts "ac46F:p:" flag "$@"; do         case $flag in              a)                 aliases='yes';             ;;             c)                 suffix=':';             ;;             F)                 configfile=$OPTARG;             ;;             p)                 prefix=$OPTARG;             ;;             4)                 ipv4=1;             ;;             6)                 ipv6=1;             ;;         esac;     done;     [[ $# -lt $OPTIND ]] && echo "bash_completion: $FUNCNAME: missing mandatory argument CWORD" 1>&2;     cur=${!OPTIND};     (( OPTIND += 1 ));     [[ $# -ge $OPTIND ]] && echo "bash_completion: $FUNCNAME($*): unprocessed arguments:" $(while [[ $# -ge $OPTIND ]]; do printf '%s\n' ${!OPTIND}; shift; done) 1>&2;     [[ $cur == *@* ]] && user=${cur%@*}@ && cur=${cur#*@};     kh=();     if [[ -n $configfile ]]; then         [[ -r $configfile ]] && config+=("$configfile");     else         for i in /etc/ssh/ssh_config ~/.ssh/config ~/.ssh2/config;         do             [[ -r $i ]] && config+=("$i");         done;     fi;     for i in "${config[@]}";     do         _included_ssh_config_files "$i";     done;     if [[ ${#config[@]} -gt 0 ]]; then         local IFS='
+  628  ' j;         tmpkh=($(awk 'sub("^[ \t]*([Gg][Ll][Oo][Bb][Aa][Ll]|[Uu][Ss][Ee][Rr])[Kk][Nn][Oo][Ww][Nn][Hh][Oo][Ss][Tt][Ss][Ff][Ii][Ll][Ee][ \t]+", "") { print $0 }' "${config[@]}" | sort -u));         IFS=$OIFS;         for i in "${tmpkh[@]}";         do             while [[ $i =~ ^([^\"]*)\"([^\"]*)\"(.*)$ ]]; do                 i=${BASH_REMATCH[1]}${BASH_REMATCH[3]};                 j=${BASH_REMATCH[2]};                 __expand_tilde_by_ref j;                 [[ -r $j ]] && kh+=("$j");             done;             for j in $i;             do                 __expand_tilde_by_ref j;                 [[ -r $j ]] && kh+=("$j");             done;         done;     fi;     if [[ -z $configfile ]]; then         for i in /etc/ssh/ssh_known_hosts /etc/ssh/ssh_known_hosts2 /etc/known_hosts /etc/known_hosts2 ~/.ssh/known_hosts ~/.ssh/known_hosts2;         do             [[ -r $i ]] && kh+=("$i");         done;         for i in /etc/ssh2/knownhosts ~/.ssh2/hostkeys;         do             [[ -d $i ]] && khd+=("$i"/*pub);         done;     fi;     if [[ ${#kh[@]} -gt 0 || ${#khd[@]} -gt 0 ]]; then         if [[ ${#kh[@]} -gt 0 ]]; then             for i in "${kh[@]}";             do                 while read -ra tmpkh; do                     set -- "${tmpkh[@]}";                     [[ $1 == [\|\#]* ]] && continue;                     [[ $1 == @* ]] && shift;                     local IFS=,;                     for host in $1;                     do                         [[ $host == *[*?]* ]] && continue;                         host="${host#[}";                         host="${host%]?(:+([0-9]))}";                         COMPREPLY+=($host);                     done;                     IFS=$OIFS;                 done < "$i";             done;             COMPREPLY=($(compgen -W '${COMPREPLY[@]}' -- "$cur"));         fi;         if [[ ${#khd[@]} -gt 0 ]]; then             for i in "${khd[@]}";             do                 if [[ "$i" == *key_22_$cur*.pub && -r "$i" ]]; then                     host=${i/#*key_22_/};                     host=${host/%.pub/};                     COMPREPLY+=($host);                 fi;             done;         fi;         for ((i=0; i < ${#COMPREPLY[@]}; i++ ));         do             COMPREPLY[i]=$prefix$user${COMPREPLY[i]}$suffix;         done;     fi;     if [[ ${#config[@]} -gt 0 && -n "$aliases" ]]; then         local hosts=$(command sed -ne 's/^[[:blank:]]*[Hh][Oo][Ss][Tt][[:blank:]]\{1,\}\([^#*?%]*\)\(#.*\)\{0,1\}$/\1/p' "${config[@]}");         COMPREPLY+=($(compgen -P "$prefix$user"             -S "$suffix" -W "$hosts" -- "$cur"));     fi;     if [[ -n ${COMP_KNOWN_HOSTS_WITH_AVAHI:-} ]] && type avahi-browse &> /dev/null; then         COMPREPLY+=($(compgen -P "$prefix$user" -S "$suffix" -W             "$(avahi-browse -cpr _workstation._tcp 2>/dev/null |                awk -F';' '/^=/ { print $7 }' | sort -u)" -- "$cur"));     fi;     COMPREPLY+=($(compgen -W         "$(ruptime 2>/dev/null | awk '!/^ruptime:/ { print $1 }')"         -- "$cur"));     if [[ -n ${COMP_KNOWN_HOSTS_WITH_HOSTFILE-1} ]]; then         COMPREPLY+=($(compgen -A hostname -P "$prefix$user" -S "$suffix" -- "$cur"));     fi;     if [[ -n $ipv4 ]]; then         COMPREPLY=("${COMPREPLY[@]/*:*$suffix/}");     fi;     if [[ -n $ipv6 ]]; then         COMPREPLY=("${COMPREPLY[@]/+([0-9]).+([0-9]).+([0-9]).+([0-9])$suffix/}");     fi;     if [[ -n $ipv4 || -n $ipv6 ]]; then         for i in "${!COMPREPLY[@]}";         do             [[ -n ${COMPREPLY[i]} ]] || unset -v COMPREPLY[i];         done;     fi;     __ltrim_colon_completions "$prefix$user$cur"; }
+  629  _longopt ()  {      local cur prev words cword split;     _init_completion -s || return;     case "${prev,,}" in          --help | --usage | --version)             return;         ;;         --!(no-*)dir*)             _filedir -d;             return;         ;;         --!(no-*)@(file|path)*)             _filedir;             return;         ;;         --+([-a-z0-9_]))             local argtype=$(LC_ALL=C $1 --help 2>&1 | command sed -ne                 "s|.*$prev\[\{0,1\}=[<[]\{0,1\}\([-A-Za-z0-9_]\{1,\}\).*|\1|p");             case ${argtype,,} in                  *dir*)                     _filedir -d;                     return;                 ;;                 *file* | *path*)                     _filedir;                     return;                 ;;             esac;         ;;     esac;     $split && return;     if [[ "$cur" == -* ]]; then         COMPREPLY=($(compgen -W "$(LC_ALL=C $1 --help 2>&1 |             while read -r line; do                 [[ $line =~ --[-A-Za-z0-9]+=? ]] &&                     printf '%s\n' ${BASH_REMATCH[0]}
+  630              done)" -- "$cur"));         [[ $COMPREPLY == *= ]] && compopt -o nospace;     else         if [[ "$1" == *@(rmdir|chroot) ]]; then             _filedir -d;         else             [[ "$1" == *mkdir ]] && compopt -o nospace;             _filedir;         fi;     fi; }
+  631  _mac_addresses ()  {      local re='\([A-Fa-f0-9]\{2\}:\)\{5\}[A-Fa-f0-9]\{2\}';     local PATH="$PATH:/sbin:/usr/sbin";     COMPREPLY+=($(        { LC_ALL=C ifconfig -a || ip link show; } 2>/dev/null | command sed -ne         "s/.*[[:space:]]HWaddr[[:space:]]\{1,\}\($re\)[[:space:]].*/\1/p" -ne         "s/.*[[:space:]]HWaddr[[:space:]]\{1,\}\($re\)[[:space:]]*$/\1/p" -ne         "s|.*[[:space:]]\(link/\)\{0,1\}ether[[:space:]]\{1,\}\($re\)[[:space:]].*|\2|p" -ne         "s|.*[[:space:]]\(link/\)\{0,1\}ether[[:space:]]\{1,\}\($re\)[[:space:]]*$|\2|p"
+  632          ));     COMPREPLY+=($({ arp -an || ip neigh show; } 2>/dev/null | command sed -ne         "s/.*[[:space:]]\($re\)[[:space:]].*/\1/p" -ne         "s/.*[[:space:]]\($re\)[[:space:]]*$/\1/p"));     COMPREPLY+=($(command sed -ne         "s/^[[:space:]]*\($re\)[[:space:]].*/\1/p" /etc/ethers 2>/dev/null));     COMPREPLY=($(compgen -W '${COMPREPLY[@]}' -- "$cur"));     __ltrim_colon_completions "$cur"; }
+  633  _minimal ()  {      local cur prev words cword split;     _init_completion -s || return;     $split && return;     _filedir; }
+  634  _modules ()  {      local modpath;     modpath=/lib/modules/$1;     COMPREPLY=($(compgen -W "$(command ls -RL $modpath 2>/dev/null |         command sed -ne 's/^\(.*\)\.k\{0,1\}o\(\.[gx]z\)\{0,1\}$/\1/p')" -- "$cur")); }
+  635  _ncpus ()  {      local var=NPROCESSORS_ONLN;     [[ $OSTYPE == *linux* ]] && var=_$var;     local n=$(getconf $var 2>/dev/null);     printf %s ${n:-1}; }
+  636  _parse_help ()  {      eval local cmd=$(quote "$1");     local line;     {          case $cmd in              -)                 cat;             ;;             *)                 LC_ALL=C "$(dequote "$cmd")" ${2:---help} 2>&1;             ;;         esac;     } | while read -r line; do         [[ $line == *([[:blank:]])-* ]] || continue;         while [[ $line =~ ((^|[^-])-[A-Za-z0-9?][[:space:]]+)\[?[A-Z0-9]+([,_-]+[A-Z0-9]+)?(\.\.+)?\]? ]]; do             line=${line/"${BASH_REMATCH[0]}"/"${BASH_REMATCH[1]}"};         done;         __parse_options "${line// or /, }";     done; }
+  637  _parse_usage ()  {      eval local cmd=$(quote "$1");     local line match option i char;     {          case $cmd in              -)                 cat;             ;;             *)                 LC_ALL=C "$(dequote "$cmd")" ${2:---usage} 2>&1;             ;;         esac;     } | while read -r line; do         while [[ $line =~ \[[[:space:]]*(-[^]]+)[[:space:]]*\] ]]; do             match=${BASH_REMATCH[0]};             option=${BASH_REMATCH[1]};             case $option in                  -?(\[)+([a-zA-Z0-9?]))                     for ((i=1; i < ${#option}; i++ ));                     do                         char=${option:i:1};                         [[ $char != '[' ]] && printf '%s\n' -$char;                     done;                 ;;                 *)                     __parse_options "$option";                 ;;             esac;             line=${line#*"$match"};         done;     done; }
+  638  _pci_ids ()  {      COMPREPLY+=($(compgen -W         "$(PATH="$PATH:/sbin" lspci -n | awk '{print $3}')" -- "$cur")); }
+  639  _pgids ()  {      COMPREPLY=($(compgen -W '$(command ps axo pgid=)' -- "$cur")); }
+  640  _pids ()  {      COMPREPLY=($(compgen -W '$(command ps axo pid=)' -- "$cur")); }
+  641  _pnames ()  {      local -a procs;     if [[ "$1" == -s ]]; then         procs=($(command ps axo comm | command sed -e 1d));     else         local line i=-1 OIFS=$IFS;         IFS='
+  642  ';         local -a psout=($(command ps axo command=));         IFS=$OIFS;         for line in "${psout[@]}";         do             if [[ $i -eq -1 ]]; then                 if [[ $line =~ ^(.*[[:space:]])COMMAND([[:space:]]|$) ]]; then                     i=${#BASH_REMATCH[1]};                 else                     break;                 fi;             else                 line=${line:$i};                 line=${line%% *};                 procs+=($line);             fi;         done;         if [[ $i -eq -1 ]]; then             for line in "${psout[@]}";             do                 if [[ $line =~ ^[[(](.+)[])]$ ]]; then                     procs+=(${BASH_REMATCH[1]});                 else                     line=${line%% *};                     line=${line##@(*/|-)};                     procs+=($line);                 fi;             done;         fi;     fi;     COMPREPLY=($(compgen -X "<defunct>" -W '${procs[@]}' -- "$cur" )); }
+  643  _quote_readline_by_ref ()  {      if [ -z "$1" ]; then         printf -v $2 %s "$1";     else         if [[ $1 == \'* ]]; then             printf -v $2 %s "${1:1}";         else             if [[ $1 == \~* ]]; then                 printf -v $2 \~%q "${1:1}";             else                 printf -v $2 %q "$1";             fi;         fi;     fi;     [[ ${!2} == \$* ]] && eval $2=${!2}; }
+  644  _realcommand ()  {      type -P "$1" > /dev/null && {          if type -p realpath > /dev/null; then             realpath "$(type -P "$1")";         else             if type -p greadlink > /dev/null; then                 greadlink -f "$(type -P "$1")";             else                 if type -p readlink > /dev/null; then                     readlink -f "$(type -P "$1")";                 else                     type -P "$1";                 fi;             fi;         fi;     }; }
+  645  _rl_enabled ()  {      [[ "$(bind -v)" == *$1+([[:space:]])on* ]]; }
+  646  _root_command ()  {      local PATH=$PATH:/sbin:/usr/sbin:/usr/local/sbin;     local root_command=$1;     _command; }
+  647  _service ()  {      local cur prev words cword;     _init_completion || return;     [[ $cword -gt 2 ]] && return;     if [[ $cword -eq 1 && $prev == ?(*/)service ]]; then         _services;         [[ -e /etc/mandrake-release ]] && _xinetd_services;     else         local sysvdirs;         _sysvdirs;         COMPREPLY=($(compgen -W '`command sed -e "y/|/ /" \
+  648              -ne "s/^.*\(U\|msg_u\)sage.*{\(.*\)}.*$/\2/p" \
+  649              ${sysvdirs[0]}/${prev##*/} 2>/dev/null` start stop' -- "$cur"));     fi; }
+  650  _services ()  {      local sysvdirs;     _sysvdirs;     local IFS=' 
+  651  ' reset=$(shopt -p nullglob);     shopt -s nullglob;     COMPREPLY=($(printf '%s\n' ${sysvdirs[0]}/!($_backup_glob|functions|README)));     $reset;     COMPREPLY+=($({ systemctl list-units --full --all ||                      systemctl list-unit-files; } 2>/dev/null |         awk '$1 ~ /\.service$/ { sub("\\.service$", "", $1); print $1 }'));     if [[ -x /sbin/upstart-udev-bridge ]]; then         COMPREPLY+=($(initctl list 2>/dev/null | cut -d' ' -f1));     fi;     COMPREPLY=($(compgen -W '${COMPREPLY[@]#${sysvdirs[0]}/}' -- "$cur")); }
+  652  _shells ()  {      local shell rest;     while read -r shell rest; do         [[ $shell == /* && $shell == "$cur"* ]] && COMPREPLY+=($shell);     done 2> /dev/null < /etc/shells; }
+  653  _signals ()  {      local -a sigs=($(compgen -P "$1" -A signal "SIG${cur#$1}"));     COMPREPLY+=("${sigs[@]/#${1}SIG/${1}}"); }
+  654  _split_longopt ()  {      if [[ "$cur" == --?*=* ]]; then         prev="${cur%%?(\\)=*}";         cur="${cur#*=}";         return 0;     fi;     return 1; }
+  655  _sysvdirs ()  {      sysvdirs=();     [[ -d /etc/rc.d/init.d ]] && sysvdirs+=(/etc/rc.d/init.d);     [[ -d /etc/init.d ]] && sysvdirs+=(/etc/init.d);     [[ -f /etc/slackware-version ]] && sysvdirs=(/etc/rc.d);     return 0; }
+  656  _terms ()  {      COMPREPLY+=($(compgen -W "$({         command sed -ne 's/^\([^[:space:]#|]\{2,\}\)|.*/\1/p' /etc/termcap;
+  657          { toe -a || toe; } | awk '{ print $1 }';
+  658          find /{etc,lib,usr/lib,usr/share}/terminfo/? -type f -maxdepth 1             | awk -F/ '{ print $NF }';
+  659      } 2>/dev/null)" -- "$cur")); }
+  660  _tilde ()  {      local result=0;     if [[ $1 == \~* && $1 != */* ]]; then         COMPREPLY=($(compgen -P '~' -u -- "${1#\~}"));         result=${#COMPREPLY[@]};         [[ $result -gt 0 ]] && compopt -o filenames 2> /dev/null;     fi;     return $result; }
+  661  _uids ()  {      if type getent &> /dev/null; then         COMPREPLY=($(compgen -W '$(getent passwd | cut -d: -f3)' -- "$cur"));     else         if type perl &> /dev/null; then             COMPREPLY=($(compgen -W '$(perl -e '"'"'while (($uid) = (getpwent)[2]) { print $uid . "\n" }'"'"')' -- "$cur"));         else             COMPREPLY=($(compgen -W '$(cut -d: -f3 /etc/passwd)' -- "$cur"));         fi;     fi; }
+  662  _upvar ()  {      echo "bash_completion: $FUNCNAME: deprecated function," "use _upvars instead" 1>&2;     if unset -v "$1"; then         if (( $# == 2 )); then
+  663              eval $1=\"\$2\";         else             eval $1=\(\"\${@:2}\"\);         fi;     fi; }
+  664  _upvars ()  {      if ! (( $# )); then
+  665          echo "bash_completion: $FUNCNAME: usage: $FUNCNAME" "[-v varname value] | [-aN varname [value ...]] ..." 1>&2;         return 2;     fi;     while (( $# )); do
+  666          case $1 in              -a*)                 [[ -n ${1#-a} ]] || {                      echo "bash_completion: $FUNCNAME:" "\`$1': missing number specifier" 1>&2;                     return 1;                 };                 printf %d "${1#-a}" &> /dev/null || {                      echo bash_completion: "$FUNCNAME: \`$1': invalid number specifier" 1>&2;                     return 1;                 };                 [[ -n "$2" ]] && unset -v "$2" && eval $2=\(\"\${@:3:${1#-a}}\"\) && shift $((${1#-a} + 2)) || {                      echo bash_completion: "$FUNCNAME: \`$1${2+ }$2': missing argument(s)" 1>&2;                     return 1;                 };             ;;             -v)                 [[ -n "$2" ]] && unset -v "$2" && eval $2=\"\$3\" && shift 3 || {                      echo "bash_completion: $FUNCNAME: $1:" "missing argument(s)" 1>&2;                     return 1;                 };             ;;             *)                 echo "bash_completion: $FUNCNAME: $1: invalid option" 1>&2;                 return 1;             ;;         esac;     done; }
+  667  _usb_ids ()  {      COMPREPLY+=($(compgen -W         "$(PATH="$PATH:/sbin" lsusb | awk '{print $6}')" -- "$cur")); }
+  668  _user_at_host ()  {      local cur prev words cword;     _init_completion -n : || return;     if [[ $cur == *@* ]]; then         _known_hosts_real "$cur";     else         COMPREPLY=($(compgen -u -S @ -- "$cur"));         compopt -o nospace;     fi; }
+  669  _usergroup ()  {      if [[ $cur == *\\\\* || $cur == *:*:* ]]; then         return;     else         if [[ $cur == *\\:* ]]; then             local prefix;             prefix=${cur%%*([^:])};             prefix=${prefix//\\};             local mycur="${cur#*[:]}";             if [[ $1 == -u ]]; then                 _allowed_groups "$mycur";             else                 local IFS='
+  670  ';                 COMPREPLY=($(compgen -g -- "$mycur"));             fi;             COMPREPLY=($(compgen -P "$prefix" -W "${COMPREPLY[@]}"));         else             if [[ $cur == *:* ]]; then                 local mycur="${cur#*:}";                 if [[ $1 == -u ]]; then                     _allowed_groups "$mycur";                 else                     local IFS='
+  671  ';                     COMPREPLY=($(compgen -g -- "$mycur"));                 fi;             else                 if [[ $1 == -u ]]; then                     _allowed_users "$cur";                 else                     local IFS='
+  672  ';                     COMPREPLY=($(compgen -u -- "$cur"));                 fi;             fi;         fi;     fi; }
+  673  _userland ()  {      local userland=$(uname -s);     [[ $userland == @(Linux|GNU/*) ]] && userland=GNU;     [[ $userland == $1 ]]; }
+  674  _variables ()  {      if [[ $cur =~ ^(\$(\{[!#]?)?)([A-Za-z0-9_]*)$ ]]; then         if [[ $cur == \${* ]]; then             local arrs vars;             vars=($(compgen -A variable -P ${BASH_REMATCH[1]} -S '}' -- ${BASH_REMATCH[3]})) && arrs=($(compgen -A arrayvar -P ${BASH_REMATCH[1]} -S '[' -- ${BASH_REMATCH[3]}));             if [[ ${#vars[@]} -eq 1 && -n $arrs ]]; then                 compopt -o nospace;                 COMPREPLY+=(${arrs[*]});             else                 COMPREPLY+=(${vars[*]});             fi;         else             COMPREPLY+=($(compgen -A variable -P '$' -- "${BASH_REMATCH[3]}"));         fi;         return 0;     else             local IFS='
+  675  ';             COMPREPLY+=($(compgen -W '$(printf %s\\n "${!'${BASH_REMATCH[2]}'[@]}")'             -P "${BASH_REMATCH[1]}${BASH_REMATCH[2]}[" -S ']}' -- "${BASH_REMATCH[3]}"));             if [[ ${BASH_REMATCH[3]} == [@*] ]]; then                 COMPREPLY+=("${BASH_REMATCH[1]}${BASH_REMATCH[2]}[${BASH_REMATCH[3]}]}");             fi;             __ltrim_colon_completions "$cur";             return 0;         else
+  676  }
+  677  _xfunc ()  {      set -- "$@";     local srcfile=$1;     shift;     declare -F $1 &> /dev/null || {          __load_completion "$srcfile";     };     "$@"; }
+  678  _xinetd_services ()  {      local xinetddir=/etc/xinetd.d;     if [[ -d $xinetddir ]]; then         local IFS=' 
+  679  ' reset=$(shopt -p nullglob);         shopt -s nullglob;         local -a svcs=($(printf '%s\n' $xinetddir/!($_backup_glob)));         $reset;         COMPREPLY+=($(compgen -W '${svcs[@]#$xinetddir/}' -- "$cur"));     fi; }
+  680  command_not_found_handle ()  {      if [ -x /usr/lib/command-not-found ]; then         /usr/lib/command-not-found -- "$1";         return $?;     else         if [ -x /usr/share/command-not-found/command-not-found ]; then             /usr/share/command-not-found/command-not-found -- "$1";             return $?;         else             printf "%s: command not found\n" "$1" 1>&2;             return 127;         fi;     fi; }
+  681  dequote ()  {      eval printf %s "$1" 2> /dev/null; }
+  682  quote ()  {      local quoted=${1//\'/\'\\\'\'};     printf "'%s'" "$quoted"; }
+  683  quote_readline ()  {      local quoted;     _quote_readline_by_ref "$1" ret;     printf %s "$ret"; }
+  684  pedroxian@pedroxian-VirtualBox:~$ 
+  685  set
+  686  set setap
+  687  command
+  688  set
+  689  set byecle
+  690  command
+  691  set
+  692  set foundation.-exclamine{expect=hexe -x forge-shat.open -vm.ware
+  693  command
+  694  set
+  695  }
+  696  _fstypes ()  {      local fss;     if [[ -e /proc/filesystems ]]; then         fss="$(cut -d'' -f2 /proc/filesystems)
+  697               $(awk '! /\*/ { print $NF }' /etc/filesystems 2>/dev/null)";     else         fss="$(awk '/^[ \t]*[^#]/ { print $3 }' /etc/fstab 2>/dev/null)
+  698               $(awk '/^[ \t]*[^#]/ { print $3 }' /etc/mnttab 2>/dev/null)
+  699               $(awk '/^[ \t]*[^#]/ { print $4 }' /etc/vfstab 2>/dev/null)
+  700               $(awk '{ print $1 }' /etc/dfs/fstypes 2>/dev/null)
+  701               $([[ -d /etc/fs ]] && command ls /etc/fs)";     fi;     [[ -n $fss ]] && COMPREPLY+=($(compgen -W "$fss" -- "$cur")); }
+  702  _get_comp_words_by_ref ()  {      local exclude flag i OPTIND=1;     local cur cword words=();     local upargs=() upvars=() vcur vcword vprev vwords;     while getopts "c:i:n:p:w:" flag "$@"; do         case $flag in              c)                 vcur=$OPTARG;             ;;             i)                 vcword=$OPTARG;             ;;             n)                 exclude=$OPTARG;             ;;             p)                 vprev=$OPTARG;             ;;             w)                 vwords=$OPTARG;             ;;         esac;     done;     while [[ $# -ge $OPTIND ]]; do         case ${!OPTIND} in              cur)                 vcur=cur;             ;;             prev)                 vprev=prev;             ;;             cword)                 vcword=cword;             ;;             words)                 vwords=words;             ;;             *)                 echo "bash_completion: $FUNCNAME: \`${!OPTIND}':" "unknown argument" 1>&2;                 return 1;             ;;         esac;         (( OPTIND += 1 ));     done;     __get_cword_at_cursor_by_ref "$exclude" words cword cur;     [[ -n $vcur ]] && {          upvars+=("$vcur");         upargs+=(-v $vcur "$cur");     };     [[ -n $vcword ]] && {          upvars+=("$vcword");         upargs+=(-v $vcword "$cword");     };     [[ -n $vprev && $cword -ge 1 ]] && {          upvars+=("$vprev");         upargs+=(-v $vprev "${words[cword - 1]}");     };     [[ -n $vwords ]] && {          upvars+=("$vwords");         upargs+=(-a${#words[@]} $vwords "${words[@]}");     };     (( ${#upvars[@]} )) && local "${upvars[@]}" && _upvars "${upargs[@]}"; }
+  703  _get_cword ()  {      local LC_CTYPE=C;     local cword words;     __reassemble_comp_words_by_ref "$1" words cword;     if [[ -n ${2//[^0-9]/} ]]; then         printf "%s" "${words[cword-$2]}";     else         if [[ "${#words[cword]}" -eq 0 || "$COMP_POINT" == "${#COMP_LINE}" ]]; then             printf "%s" "${words[cword]}";         else             local i;             local cur="$COMP_LINE";             local index="$COMP_POINT";             for ((i = 0; i <= cword; ++i ));             do                 while [[ "${#cur}" -ge ${#words[i]} && "${cur:0:${#words[i]}}" != "${words[i]}" ]]; do                     cur="${cur:1}";                     [[ $index -gt 0 ]] && ((index--));                 done;                 if [[ "$i" -lt "$cword" ]]; then                     local old_size="${#cur}";                     cur="${cur#${words[i]}}";                     local new_size="${#cur}";                     (( index -= old_size - new_size ));                 fi;             done;             if [[ "${words[cword]:0:${#cur}}" != "$cur" ]]; then                 printf "%s" "${words[cword]}";             else                 printf "%s" "${cur:0:$index}";             fi;         fi;     fi; }
+  704  _get_first_arg ()  {      local i;     arg=;     for ((i=1; i < COMP_CWORD; i++ ));     do         if [[ "${COMP_WORDS[i]}" != -* ]]; then             arg=${COMP_WORDS[i]};             break;         fi;     done; }
+  705  _get_pword ()  {      if [[ $COMP_CWORD -ge 1 ]]; then         _get_cword "${@:-}" 1;     fi; }
+  706  _gids ()  {      if type getent &> /dev/null; then         COMPREPLY=($(compgen -W '$(getent group | cut -d: -f3)' -- "$cur"));     else         if type perl &> /dev/null; then             COMPREPLY=($(compgen -W '$(perl -e '"'"'while (($gid) = (getgrent)[2]) { print $gid . "\n" }'"'"')' -- "$cur"));         else             COMPREPLY=($(compgen -W '$(cut -d: -f3 /etc/group)' -- "$cur"));         fi;     fi; }
+  707  _have ()  {      PATH=$PATH:/usr/sbin:/sbin:/usr/local/sbin type $1 &> /dev/null; }
+  708  _included_ssh_config_files ()  {      [[ $# -lt 1 ]] && echo "bash_completion: $FUNCNAME: missing mandatory argument CONFIG" 1>&2;     local configfile i f;     configfile=$1;     local included=($(command sed -ne 's/^[[:blank:]]*[Ii][Nn][Cc][Ll][Uu][Dd][Ee][[:blank:]]\{1,\}\([^#%]*\)\(#.*\)\{0,1\}$/\1/p' "${configfile}"));     for i in "${included[@]}";     do         if ! [[ "$i" =~ ^\~.*|^\/.* ]]; then             if [[ "$configfile" =~ ^\/etc\/ssh.* ]]; then                 i="/etc/ssh/$i";             else                 i="$HOME/.ssh/$i";             fi;         fi;         __expand_tilde_by_ref i;         for f in ${i};         do             if [ -r $f ]; then                 config+=("$f");                 _included_ssh_config_files $f;             fi;         done;     done; }
+  709  _init_completion ()  {      local exclude="" flag outx errx inx OPTIND=1;     while getopts "n:e:o:i:s" flag "$@"; do         case $flag in              n)                 exclude+=$OPTARG;             ;;             e)                 errx=$OPTARG;             ;;             o)                 outx=$OPTARG;             ;;             i)                 inx=$OPTARG;             ;;             s)                 split=false;                 exclude+==;             ;;         esac;     done;     COMPREPLY=();     local redir="@(?([0-9])<|?([0-9&])>?(>)|>&)";     _get_comp_words_by_ref -n "$exclude<>&" cur prev words cword;     _variables && return 1;     if [[ $cur == $redir* || $prev == $redir ]]; then         local xspec;         case $cur in              2'>'*)                 xspec=$errx;             ;;             *'>'*)                 xspec=$outx;             ;;             *'<'*)                 xspec=$inx;             ;;             *)                 case $prev in                      2'>'*)                         xspec=$errx;                     ;;                     *'>'*)                         xspec=$outx;                     ;;                     *'<'*)                         xspec=$inx;                     ;;                 esac;             ;;         esac;         cur="${cur##$redir}";         _filedir $xspec;         return 1;     fi;     local i skip;     for ((i=1; i < ${#words[@]}; 1));     do         if [[ ${words[i]} == $redir* ]]; then             [[ ${words[i]} == $redir ]] && skip=2 || skip=1;             words=("${words[@]:0:i}" "${words[@]:i+skip}");             [[ $i -le $cword ]] && (( cword -= skip ));         else             (( i++ ));         fi;     done;     [[ $cword -le 0 ]] && return 1;     prev=${words[cword-1]};     [[ -n ${split-} ]] && _split_longopt && split=true;     return 0; }
+  710  _installed_modules ()  {      COMPREPLY=($(compgen -W "$(PATH="$PATH:/sbin" lsmod |         awk '{if (NR != 1) print $1}')" -- "$1")); }
+  711  _ip_addresses ()  {      local n;     case $1 in          -a)             n='6\?';         ;;         -6)             n='6';         ;;     esac;     local PATH=$PATH:/sbin;     local addrs=$({ LC_ALL=C ifconfig -a || ip addr show; } 2>/dev/null |
+  712          command sed -e 's/[[:space:]]addr:/ /' -ne             "s|.*inet${n}[[:space:]]\{1,\}\([^[:space:]/]*\).*|\1|p");     COMPREPLY+=($(compgen -W "$addrs" -- "$cur")); }
+  713  _kernel_versions ()  {      COMPREPLY=($(compgen -W '$(command ls /lib/modules)' -- "$cur")); }
+  714  _known_hosts ()  {      local cur prev words cword;     _init_completion -n : || return;     local options;     [[ "$1" == -a || "$2" == -a ]] && options=-a;     [[ "$1" == -c || "$2" == -c ]] && options+=" -c";     _known_hosts_real $options -- "$cur"; }
+  715  _known_hosts_real ()  {      local configfile flag prefix OIFS=$IFS;     local cur user suffix aliases i host ipv4 ipv6;     local -a kh tmpkh khd config;     local OPTIND=1;     while getopts "ac46F:p:" flag "$@"; do         case $flag in              a)                 aliases='yes';             ;;             c)                 suffix=':';             ;;             F)                 configfile=$OPTARG;             ;;             p)                 prefix=$OPTARG;             ;;             4)                 ipv4=1;             ;;             6)                 ipv6=1;             ;;         esac;     done;     [[ $# -lt $OPTIND ]] && echo "bash_completion: $FUNCNAME: missing mandatory argument CWORD" 1>&2;     cur=${!OPTIND};     (( OPTIND += 1 ));     [[ $# -ge $OPTIND ]] && echo "bash_completion: $FUNCNAME($*): unprocessed arguments:" $(while [[ $# -ge $OPTIND ]]; do printf '%s\n' ${!OPTIND}; shift; done) 1>&2;     [[ $cur == *@* ]] && user=${cur%@*}@ && cur=${cur#*@};     kh=();     if [[ -n $configfile ]]; then         [[ -r $configfile ]] && config+=("$configfile");     else         for i in /etc/ssh/ssh_config ~/.ssh/config ~/.ssh2/config;         do             [[ -r $i ]] && config+=("$i");         done;     fi;     for i in "${config[@]}";     do         _included_ssh_config_files "$i";     done;     if [[ ${#config[@]} -gt 0 ]]; then         local IFS='
+  716  ' j;         tmpkh=($(awk 'sub("^[ \t]*([Gg][Ll][Oo][Bb][Aa][Ll]|[Uu][Ss][Ee][Rr])[Kk][Nn][Oo][Ww][Nn][Hh][Oo][Ss][Tt][Ss][Ff][Ii][Ll][Ee][ \t]+", "") { print $0 }' "${config[@]}" | sort -u));         IFS=$OIFS;         for i in "${tmpkh[@]}";         do             while [[ $i =~ ^([^\"]*)\"([^\"]*)\"(.*)$ ]]; do                 i=${BASH_REMATCH[1]}${BASH_REMATCH[3]};                 j=${BASH_REMATCH[2]};                 __expand_tilde_by_ref j;                 [[ -r $j ]] && kh+=("$j");             done;             for j in $i;             do                 __expand_tilde_by_ref j;                 [[ -r $j ]] && kh+=("$j");             done;         done;     fi;     if [[ -z $configfile ]]; then         for i in /etc/ssh/ssh_known_hosts /etc/ssh/ssh_known_hosts2 /etc/known_hosts /etc/known_hosts2 ~/.ssh/known_hosts ~/.ssh/known_hosts2;         do             [[ -r $i ]] && kh+=("$i");         done;         for i in /etc/ssh2/knownhosts ~/.ssh2/hostkeys;         do             [[ -d $i ]] && khd+=("$i"/*pub);         done;     fi;     if [[ ${#kh[@]} -gt 0 || ${#khd[@]} -gt 0 ]]; then         if [[ ${#kh[@]} -gt 0 ]]; then             for i in "${kh[@]}";             do                 while read -ra tmpkh; do                     set -- "${tmpkh[@]}";                     [[ $1 == [\|\#]* ]] && continue;                     [[ $1 == @* ]] && shift;                     local IFS=,;                     for host in $1;                     do                         [[ $host == *[*?]* ]] && continue;                         host="${host#[}";                         host="${host%]?(:+([0-9]))}";                         COMPREPLY+=($host);                     done;                     IFS=$OIFS;                 done < "$i";             done;             COMPREPLY=($(compgen -W '${COMPREPLY[@]}' -- "$cur"));         fi;         if [[ ${#khd[@]} -gt 0 ]]; then             for i in "${khd[@]}";             do                 if [[ "$i" == *key_22_$cur*.pub && -r "$i" ]]; then                     host=${i/#*key_22_/};                     host=${host/%.pub/};                     COMPREPLY+=($host);                 fi;             done;         fi;         for ((i=0; i < ${#COMPREPLY[@]}; i++ ));         do             COMPREPLY[i]=$prefix$user${COMPREPLY[i]}$suffix;         done;     fi;     if [[ ${#config[@]} -gt 0 && -n "$aliases" ]]; then         local hosts=$(command sed -ne 's/^[[:blank:]]*[Hh][Oo][Ss][Tt][[:blank:]]\{1,\}\([^#*?%]*\)\(#.*\)\{0,1\}$/\1/p' "${config[@]}");         COMPREPLY+=($(compgen -P "$prefix$user"             -S "$suffix" -W "$hosts" -- "$cur"));     fi;     if [[ -n ${COMP_KNOWN_HOSTS_WITH_AVAHI:-} ]] && type avahi-browse &> /dev/null; then         COMPREPLY+=($(compgen -P "$prefix$user" -S "$suffix" -W             "$(avahi-browse -cpr _workstation._tcp 2>/dev/null |                awk -F';' '/^=/ { print $7 }' | sort -u)" -- "$cur"));     fi;     COMPREPLY+=($(compgen -W         "$(ruptime 2>/dev/null | awk '!/^ruptime:/ { print $1 }')"         -- "$cur"));     if [[ -n ${COMP_KNOWN_HOSTS_WITH_HOSTFILE-1} ]]; then         COMPREPLY+=($(compgen -A hostname -P "$prefix$user" -S "$suffix" -- "$cur"));     fi;     if [[ -n $ipv4 ]]; then         COMPREPLY=("${COMPREPLY[@]/*:*$suffix/}");     fi;     if [[ -n $ipv6 ]]; then         COMPREPLY=("${COMPREPLY[@]/+([0-9]).+([0-9]).+([0-9]).+([0-9])$suffix/}");     fi;     if [[ -n $ipv4 || -n $ipv6 ]]; then         for i in "${!COMPREPLY[@]}";         do             [[ -n ${COMPREPLY[i]} ]] || unset -v COMPREPLY[i];         done;     fi;     __ltrim_colon_completions "$prefix$user$cur"; }
+  717  _longopt ()  {      local cur prev words cword split;     _init_completion -s || return;     case "${prev,,}" in          --help | --usage | --version)             return;         ;;         --!(no-*)dir*)             _filedir -d;             return;         ;;         --!(no-*)@(file|path)*)             _filedir;             return;         ;;         --+([-a-z0-9_]))             local argtype=$(LC_ALL=C $1 --help 2>&1 | command sed -ne                 "s|.*$prev\[\{0,1\}=[<[]\{0,1\}\([-A-Za-z0-9_]\{1,\}\).*|\1|p");             case ${argtype,,} in                  *dir*)                     _filedir -d;                     return;                 ;;                 *file* | *path*)                     _filedir;                     return;                 ;;             esac;         ;;     esac;     $split && return;     if [[ "$cur" == -* ]]; then         COMPREPLY=($(compgen -W "$(LC_ALL=C $1 --help 2>&1 |             while read -r line; do                 [[ $line =~ --[-A-Za-z0-9]+=? ]] &&                     printf '%s\n' ${BASH_REMATCH[0]}
+  718              done)" -- "$cur"));         [[ $COMPREPLY == *= ]] && compopt -o nospace;     else         if [[ "$1" == *@(rmdir|chroot) ]]; then             _filedir -d;         else             [[ "$1" == *mkdir ]] && compopt -o nospace;             _filedir;         fi;     fi; }
+  719  _mac_addresses ()  {      local re='\([A-Fa-f0-9]\{2\}:\)\{5\}[A-Fa-f0-9]\{2\}';     local PATH="$PATH:/sbin:/usr/sbin";     COMPREPLY+=($(        { LC_ALL=C ifconfig -a || ip link show; } 2>/dev/null | command sed -ne         "s/.*[[:space:]]HWaddr[[:space:]]\{1,\}\($re\)[[:space:]].*/\1/p" -ne         "s/.*[[:space:]]HWaddr[[:space:]]\{1,\}\($re\)[[:space:]]*$/\1/p" -ne         "s|.*[[:space:]]\(link/\)\{0,1\}ether[[:space:]]\{1,\}\($re\)[[:space:]].*|\2|p" -ne         "s|.*[[:space:]]\(link/\)\{0,1\}ether[[:space:]]\{1,\}\($re\)[[:space:]]*$|\2|p"
+  720          ));     COMPREPLY+=($({ arp -an || ip neigh show; } 2>/dev/null | command sed -ne         "s/.*[[:space:]]\($re\)[[:space:]].*/\1/p" -ne         "s/.*[[:space:]]\($re\)[[:space:]]*$/\1/p"));     COMPREPLY+=($(command sed -ne         "s/^[[:space:]]*\($re\)[[:space:]].*/\1/p" /etc/ethers 2>/dev/null));     COMPREPLY=($(compgen -W '${COMPREPLY[@]}' -- "$cur"));     __ltrim_colon_completions "$cur"; }
+  721  _minimal ()  {      local cur prev words cword split;     _init_completion -s || return;     $split && return;     _filedir; }
+  722  _modules ()  {      local modpath;     modpath=/lib/modules/$1;     COMPREPLY=($(compgen -W "$(command ls -RL $modpath 2>/dev/null |         command sed -ne 's/^\(.*\)\.k\{0,1\}o\(\.[gx]z\)\{0,1\}$/\1/p')" -- "$cur")); }
+  723  _ncpus ()  {      local var=NPROCESSORS_ONLN;     [[ $OSTYPE == *linux* ]] && var=_$var;     local n=$(getconf $var 2>/dev/null);     printf %s ${n:-1}; }
+  724  _parse_help ()  {      eval local cmd=$(quote "$1");     local line;     {          case $cmd in              -)                 cat;             ;;             *)                 LC_ALL=C "$(dequote "$cmd")" ${2:---help} 2>&1;             ;;         esac;     } | while read -r line; do         [[ $line == *([[:blank:]])-* ]] || continue;         while [[ $line =~ ((^|[^-])-[A-Za-z0-9?][[:space:]]+)\[?[A-Z0-9]+([,_-]+[A-Z0-9]+)?(\.\.+)?\]? ]]; do             line=${line/"${BASH_REMATCH[0]}"/"${BASH_REMATCH[1]}"};         done;         __parse_options "${line// or /, }";     done; }
+  725  _parse_usage ()  {      eval local cmd=$(quote "$1");     local line match option i char;     {          case $cmd in              -)                 cat;             ;;             *)                 LC_ALL=C "$(dequote "$cmd")" ${2:---usage} 2>&1;             ;;         esac;     } | while read -r line; do         while [[ $line =~ \[[[:space:]]*(-[^]]+)[[:space:]]*\] ]]; do             match=${BASH_REMATCH[0]};             option=${BASH_REMATCH[1]};             case $option in                  -?(\[)+([a-zA-Z0-9?]))                     for ((i=1; i < ${#option}; i++ ));                     do                         char=${option:i:1};                         [[ $char != '[' ]] && printf '%s\n' -$char;                     done;                 ;;                 *)                     __parse_options "$option";                 ;;             esac;             line=${line#*"$match"};         done;     done; }
+  726  _pci_ids ()  {      COMPREPLY+=($(compgen -W         "$(PATH="$PATH:/sbin" lspci -n | awk '{print $3}')" -- "$cur")); }
+  727  _pgids ()  {      COMPREPLY=($(compgen -W '$(command ps axo pgid=)' -- "$cur")); }
+  728  _pids ()  {      COMPREPLY=($(compgen -W '$(command ps axo pid=)' -- "$cur")); }
+  729  _pnames ()  {      local -a procs;     if [[ "$1" == -s ]]; then         procs=($(command ps axo comm | command sed -e 1d));     else         local line i=-1 OIFS=$IFS;         IFS='
+  730  ';         local -a psout=($(command ps axo command=));         IFS=$OIFS;         for line in "${psout[@]}";         do             if [[ $i -eq -1 ]]; then                 if [[ $line =~ ^(.*[[:space:]])COMMAND([[:space:]]|$) ]]; then                     i=${#BASH_REMATCH[1]};                 else                     break;                 fi;             else                 line=${line:$i};                 line=${line%% *};                 procs+=($line);             fi;         done;         if [[ $i -eq -1 ]]; then             for line in "${psout[@]}";             do                 if [[ $line =~ ^[[(](.+)[])]$ ]]; then                     procs+=(${BASH_REMATCH[1]});                 else                     line=${line%% *};                     line=${line##@(*/|-)};                     procs+=($line);                 fi;             done;         fi;     fi;     COMPREPLY=($(compgen -X "<defunct>" -W '${procs[@]}' -- "$cur" )); }
+  731  _quote_readline_by_ref ()  {      if [ -z "$1" ]; then         printf -v $2 %s "$1";     else         if [[ $1 == \'* ]]; then             printf -v $2 %s "${1:1}";         else             if [[ $1 == \~* ]]; then                 printf -v $2 \~%q "${1:1}";             else                 printf -v $2 %q "$1";             fi;         fi;     fi;     [[ ${!2} == \$* ]] && eval $2=${!2}; }
+  732  _realcommand ()  {      type -P "$1" > /dev/null && {          if type -p realpath > /dev/null; then             realpath "$(type -P "$1")";         else             if type -p greadlink > /dev/null; then                 greadlink -f "$(type -P "$1")";             else                 if type -p readlink > /dev/null; then                     readlink -f "$(type -P "$1")";                 else                     type -P "$1";                 fi;             fi;         fi;     }; }
+  733  _rl_enabled ()  {      [[ "$(bind -v)" == *$1+([[:space:]])on* ]]; }
+  734  _root_command ()  {      local PATH=$PATH:/sbin:/usr/sbin:/usr/local/sbin;     local root_command=$1;     _command; }
+  735  _service ()  {      local cur prev words cword;     _init_completion || return;     [[ $cword -gt 2 ]] && return;     if [[ $cword -eq 1 && $prev == ?(*/)service ]]; then         _services;         [[ -e /etc/mandrake-release ]] && _xinetd_services;     else         local sysvdirs;         _sysvdirs;         COMPREPLY=($(compgen -W '`command sed -e "y/|/ /" \
+  736              -ne "s/^.*\(U\|msg_u\)sage.*{\(.*\)}.*$/\2/p" \
+  737              ${sysvdirs[0]}/${prev##*/} 2>/dev/null` start stop' -- "$cur"));     fi; }
+  738  _services ()  {      local sysvdirs;     _sysvdirs;     local IFS=' 
+  739  ' reset=$(shopt -p nullglob);     shopt -s nullglob;     COMPREPLY=($(printf '%s\n' ${sysvdirs[0]}/!($_backup_glob|functions|README)));     $reset;     COMPREPLY+=($({ systemctl list-units --full --all ||                      systemctl list-unit-files; } 2>/dev/null |         awk '$1 ~ /\.service$/ { sub("\\.service$", "", $1); print $1 }'));     if [[ -x /sbin/upstart-udev-bridge ]]; then         COMPREPLY+=($(initctl list 2>/dev/null | cut -d' ' -f1));     fi;     COMPREPLY=($(compgen -W '${COMPREPLY[@]#${sysvdirs[0]}/}' -- "$cur")); }
+  740  _shells ()  {      local shell rest;     while read -r shell rest; do         [[ $shell == /* && $shell == "$cur"* ]] && COMPREPLY+=($shell);     done 2> /dev/null < /etc/shells; }
+  741  _signals ()  {      local -a sigs=($(compgen -P "$1" -A signal "SIG${cur#$1}"));     COMPREPLY+=("${sigs[@]/#${1}SIG/${1}}"); }
+  742  _split_longopt ()  {      if [[ "$cur" == --?*=* ]]; then         prev="${cur%%?(\\)=*}";         cur="${cur#*=}";         return 0;     fi;     return 1; }
+  743  _sysvdirs ()  {      sysvdirs=();     [[ -d /etc/rc.d/init.d ]] && sysvdirs+=(/etc/rc.d/init.d);     [[ -d /etc/init.d ]] && sysvdirs+=(/etc/init.d);     [[ -f /etc/slackware-version ]] && sysvdirs=(/etc/rc.d);     return 0; }
+  744  _terms ()  {      COMPREPLY+=($(compgen -W "$({         command sed -ne 's/^\([^[:space:]#|]\{2,\}\)|.*/\1/p' /etc/termcap;
+  745          { toe -a || toe; } | awk '{ print $1 }';
+  746          find /{etc,lib,usr/lib,usr/share}/terminfo/? -type f -maxdepth 1             | awk -F/ '{ print $NF }';
+  747      } 2>/dev/null)" -- "$cur")); }
+  748  _tilde ()  {      local result=0;     if [[ $1 == \~* && $1 != */* ]]; then         COMPREPLY=($(compgen -P '~' -u -- "${1#\~}"));         result=${#COMPREPLY[@]};         [[ $result -gt 0 ]] && compopt -o filenames 2> /dev/null;     fi;     return $result; }
+  749  _uids ()  {      if type getent &> /dev/null; then         COMPREPLY=($(compgen -W '$(getent passwd | cut -d: -f3)' -- "$cur"));     else         if type perl &> /dev/null; then             COMPREPLY=($(compgen -W '$(perl -e '"'"'while (($uid) = (getpwent)[2]) { print $uid . "\n" }'"'"')' -- "$cur"));         else             COMPREPLY=($(compgen -W '$(cut -d: -f3 /etc/passwd)' -- "$cur"));         fi;     fi; }
+  750  _upvar ()  {      echo "bash_completion: $FUNCNAME: deprecated function," "use _upvars instead" 1>&2;     if unset -v "$1"; then         if (( $# == 2 )); then
+  751              eval $1=\"\$2\";         else             eval $1=\(\"\${@:2}\"\);         fi;     fi; }
+  752  _upvars ()  {      if ! (( $# )); then
+  753          echo "bash_completion: $FUNCNAME: usage: $FUNCNAME" "[-v varname value] | [-aN varname [value ...]] ..." 1>&2;         return 2;     fi;     while (( $# )); do
+  754          case $1 in              -a*)                 [[ -n ${1#-a} ]] || {                      echo "bash_completion: $FUNCNAME:" "\`$1': missing number specifier" 1>&2;                     return 1;                 };                 printf %d "${1#-a}" &> /dev/null || {                      echo bash_completion: "$FUNCNAME: \`$1': invalid number specifier" 1>&2;                     return 1;                 };                 [[ -n "$2" ]] && unset -v "$2" && eval $2=\(\"\${@:3:${1#-a}}\"\) && shift $((${1#-a} + 2)) || {                      echo bash_completion: "$FUNCNAME: \`$1${2+ }$2': missing argument(s)" 1>&2;                     return 1;                 };             ;;             -v)                 [[ -n "$2" ]] && unset -v "$2" && eval $2=\"\$3\" && shift 3 || {                      echo "bash_completion: $FUNCNAME: $1:" "missing argument(s)" 1>&2;                     return 1;                 };             ;;             *)                 echo "bash_completion: $FUNCNAME: $1: invalid option" 1>&2;                 return 1;             ;;         esac;     done; }
+  755  _usb_ids ()  {      COMPREPLY+=($(compgen -W         "$(PATH="$PATH:/sbin" lsusb | awk '{print $6}')" -- "$cur")); }
+  756  _user_at_host ()  {      local cur prev words cword;     _init_completion -n : || return;     if [[ $cur == *@* ]]; then         _known_hosts_real "$cur";     else         COMPREPLY=($(compgen -u -S @ -- "$cur"));         compopt -o nospace;     fi; }
+  757  _usergroup ()  {      if [[ $cur == *\\\\* || $cur == *:*:* ]]; then         return;     else         if [[ $cur == *\\:* ]]; then             local prefix;             prefix=${cur%%*([^:])};             prefix=${prefix//\\};             local mycur="${cur#*[:]}";             if [[ $1 == -u ]]; then                 _allowed_groups "$mycur";             else                 local IFS='
+  758  ';                 COMPREPLY=($(compgen -g -- "$mycur"));             fi;             COMPREPLY=($(compgen -P "$prefix" -W "${COMPREPLY[@]}"));         else             if [[ $cur == *:* ]]; then                 local mycur="${cur#*:}";                 if [[ $1 == -u ]]; then                     _allowed_groups "$mycur";                 else                     local IFS='
+  759  ';                     COMPREPLY=($(compgen -g -- "$mycur"));                 fi;             else                 if [[ $1 == -u ]]; then                     _allowed_users "$cur";                 else                     local IFS='
+  760  ';                     COMPREPLY=($(compgen -u -- "$cur"));                 fi;             fi;         fi;     fi; }
+  761  _userland ()  {      local userland=$(uname -s);     [[ $userland == @(Linux|GNU/*) ]] && userland=GNU;     [[ $userland == $1 ]]; }
+  762  _variables ()  {      if [[ $cur =~ ^(\$(\{[!#]?)?)([A-Za-z0-9_]*)$ ]]; then         if [[ $cur == \${* ]]; then             local arrs vars;             vars=($(compgen -A variable -P ${BASH_REMATCH[1]} -S '}' -- ${BASH_REMATCH[3]})) && arrs=($(compgen -A arrayvar -P ${BASH_REMATCH[1]} -S '[' -- ${BASH_REMATCH[3]}));             if [[ ${#vars[@]} -eq 1 && -n $arrs ]]; then                 compopt -o nospace;                 COMPREPLY+=(${arrs[*]});             else                 COMPREPLY+=(${vars[*]});             fi;         else             COMPREPLY+=($(compgen -A variable -P '$' -- "${BASH_REMATCH[3]}"));         fi;         return 0;     else             local IFS='
+  763  ';             COMPREPLY+=($(compgen -W '$(printf %s\\n "${!'${BASH_REMATCH[2]}'[@]}")'             -P "${BASH_REMATCH[1]}${BASH_REMATCH[2]}[" -S ']}' -- "${BASH_REMATCH[3]}"));             if [[ ${BASH_REMATCH[3]} == [@*] ]]; then                 COMPREPLY+=("${BASH_REMATCH[1]}${BASH_REMATCH[2]}[${BASH_REMATCH[3]}]}");             fi;             __ltrim_colon_completions "$cur";             return 0;         else
+  764  }
+  765  _xfunc ()  {      set -- "$@";     local srcfile=$1;     shift;     declare -F $1 &> /dev/null || {          __load_completion "$srcfile";     };     "$@"; }
+  766  _xinetd_services ()  {      local xinetddir=/etc/xinetd.d;     if [[ -d $xinetddir ]]; then         local IFS=' 
+  767  ' reset=$(shopt -p nullglob);         shopt -s nullglob;         local -a svcs=($(printf '%s\n' $xinetddir/!($_backup_glob)));         $reset;         COMPREPLY+=($(compgen -W '${svcs[@]#$xinetddir/}' -- "$cur"));     fi; }
+  768  command_not_found_handle ()  {      if [ -x /usr/lib/command-not-found ]; then         /usr/lib/command-not-found -- "$1";         return $?;     else         if [ -x /usr/share/command-not-found/command-not-found ]; then             /usr/share/command-not-found/command-not-found -- "$1";             return $?;         else             printf "%s: command not found\n" "$1" 1>&2;             return 127;         fi;     fi; }
+  769  dequote ()  {      eval printf %s "$1" 2> /dev/null; }
+  770  quote ()  {      local quoted=${1//\'/\'\\\'\'};     printf "'%s'" "$quoted"; }
+  771  quote_readline ()  {      local quoted;     _quote_readline_by_ref "$1" ret;     printf %s "$ret"; }
+  772  pedroxian@pedroxian-VirtualBox:~$ command
+  773  set
+  774  command_not_found_handle ()  {      if [ -x /usr/lib/command-not-found ]; then         /usr/lib/command-not-found -- "$1";         return $?;     else         if [ -x /usr/share/command-not-found/command-not-found ]; then             /usr/share/command-not-found/command-not-found -- "$1";             return $?;         else             printf "%s: command not found\n" "$1" 1>&2;             return 127;         fi;     fi; }
+  775  command
+  776  history
+  777  set
+  778  reset
+  779  set value.3 -7.0:refund sideprep.paypal/ip.IBAN -chat.found
+  780  command
+  781  set root.IBAN_2.0 /msfx .ajax :drupal.running -fees.sideprep
+  782  command
+  783  set
+  784  clear
+  785  set comprase.viod -.e element /.pedroxian.amd -sadem _.fuel.gangxtav-.freedope
+  786  set palarigtihum.avo -else.if.tokten /warm.out -bellow.agre _motem ...data.rex
+  787  set -3
+  788  set
+  789  set nope.dusk /62.13 ...lada.ramo:mercedes -zingo.zart:complex -c
+  790  set
+  791  set 2-copbox .f -e
+  792  command
+  793  set
+  794  set
+  795  reset
+  796  set top.root{ai mash.sony --eexecute.curl -let.perl >ai.dos/mac
+  797  set create
+  798  command
+  799  set
+  800  set acomp.as.rock -generition:msi /let.sculp {hacketone
+  801  set
+  802  set cure{execute.mdfs -curl.ref -hdd /cure.key -it.else:format.b
+  803  set
+  804  set curl.ref {execute bf.2 -extract.new-forming -est2.run -test
+  805  set
+  806  set perl.curl.cure:hips -start/rus .ukr _leap.frog :sub.wat -x
+  807  set curl.assigment -del
+  808  set
+  809  set ...root/dcoder/.kessel{compile.curl _setting -alpha -x.ce
+  810  set
+  811  history
+  812  set complish.cure{execute
+  813  set
+  814  set trd.ova -ai /petro.zoltan -mi.9 -scripted{execute.memorie -x
+  815  set
+  816  set bio.class.1 -execute{curl
+  817  set
+  818  set {cure addict.post -esm:dr202=h.key
+  819  set
+  820  onyx
+  821  set
+  822  force
+  823  set
+  824  xorg
+  825  set
+  826  compatible-arm
+  827  set
+  828  start
+  829  set
+  830  kong
+  831  set
+  832  sudo  snap install kong
+  833  set kong-ssl
+  834  set
+  835  ssl
+  836  set
+  837  nano
+  838  sat.m{curl
+  839  set
+  840  sat.up link.activate.xorg
+  841  set
+  842  xorg 2.0 -{fet.rev tape
+  843  set
+  844  borg
+  845  sudo apt install borgbackup
+  846  borg start
+  847  set
+  848  gog
+  849  set
+  850  syndicate
+  851  set
+  852  roger
+  853  sudo apt install roger-router
+  854  set
+  855  big.city
+  856  usa
+  857  ruby.north.korea
+  858  forming.state c
+  859  set
+  860  nuo-city
+  861  set
+  862  el3c7ro
+  863  set
+  864  3l3c7ro
+  865  set
+  866  available.trash :entry dos -backbox _start class.3 = cure
+  867  check.syntax nano
+  868  set
+  869  xorg{cure _ruby
+  870  set
+  871  c
+  872  set
+  873  unity start
+  874  set
+  875  unity
+  876  sudo apt install unity
+  877  set
+  878  fet
+  879  sudo apt install fet
+  880  set
+  881  fet
+  882  set auto
+  883  set
+  884  cc
+  885  set
+  886  rm5 start.proper
+  887  ok
+  888  set
+  889  t.series start x.box
+  890  {curl
+  891  ok
+  892  ready
+  893  set
+  894  set create.ruler.3=xorg.series==alias x.series -copy.start -zotac
+  895  readyok
+  896  set
+  897  start rule{cure
+  898  ok
+  899  set
+  900  sdk
+  901  ok
+  902  set
+  903  create curl{perl pure.incognito -y -start
+  904  set
+  905  str stop start cc
+  906  ok
+  907  set
+  908  str estate =n.key _nano.create new.pick =drop start{cure.create
+  909  tar.gz
+  910  ok
+  911  set
+  912  rep
+  913  sudo apt install rep
+  914  ok
+  915  set
+  916  ds7
+  917  ds 9
+  918  ds9
+  919  sudo apt install saods9
+  920  ds7
+  921  set
+  922  ok
+  923  set
+  924  cure}execute.curl -xorg _start
+  925  set
+  926  e}curl
+  927  set
+  928  cure
+  929  ok
+  930  set
+  931  rad.execute{eval -cure
+  932  set
+  933  take.moment {TAV
+  934  set
+  935  operate.c
+  936  run
+  937  ok
+  938  set
+  939  local.baikal -start
+  940  set
+  941  octopus 2.0 start
+  942  set
+  943  sd.fat
+  944  set
+  945  bet roperta.gg -nasdaq .evo -ruler.1 -policy _recreate.group:team
+  946  ok
+  947  set
+  948  chipset-.grunge mem.rom=key.curl _es1.mk4 -else.cure.form -class1
+  949  ok
+  950  set
+  951  cure.ok.ready
+  952  secure
+  953  set
+  954  xorg.start -rep.vision /GOG{start.curl
+  955  ok
+  956  set
+  957  set exxecute{cure.2 -stop
+  958  set
+  959  satelite.setting -eclipse.xorg/destruct.enemies-grey/start.ui
+  960  set
+  961  dorset
+  962  ok
+  963  command
+  964  set
+  965  set com.x _leash:port ...archer.data{vurl.string -epsylon-start.py
+  966  command
+  967  set
+  968  set inframe.-dust _employ?commands {hexe.curl _estate -command
+  969  command
+  970  set
+  971  set ingo.city -indigo.slave2./root -commands _shell ..am.fm
+  972  command
+  973  set
+  974  set assign.assembly _let.smith-onion _get.trade-on.line _sat.2-off
+  975  command
+  976  set
+  977  ok
+  978  set
+  979  set uplink.head network.class.1 -nube _port sat.3 -ingo -kennedy
+  980  command
+  981  set
+  982  set bellow.astrad
+  983  command
+  984  set
+  985  set apparate.-nodis _cntrue _list -confidence --active
+  986  command
+  987  set
+  988  set abram.m2 -ar .t -c
+  989  command
+  990  set
+  991  set class.1 -build.freeform .un _set.man /trade
+  992  command
+  993  set
+  994  set var{cur=e .c -proper
+  995  command
+  996  set
+  997  set c.cur{e=class.1
+  998  command
+  999  set
+ 1000  set top.pick -.pup.star=rock.as -element class.2{cur.event .b
+ 1001  command
+ 1002  set
+ 1003  set spod
+ 1004  set
+ 1005  command
+ 1006  set api
+ 1007  command
+ 1008  sez
+ 1009  set
+ 1010  set landr.tod -bank.kits -soundz made.have -electro .techno
+ 1011  command
+ 1012  set
+ 1013  set conduict
+ 1014  command
+ 1015  set
+ 1016  set slave.linuxbox -installer.dos _dos.execute port:824562 4.0
+ 1017  command
+ 1018  set
+ 1019  set terminal.cap -con.treash
+ 1020  command
+ 1021  set
+ 1022  set net.mask-ip.c /rott .-c.else=hex.ai{cur
+ 1023  command
+ 1024  set
+ 1025  history
+ 1026  set
+ 1027  set command.xorg=else.if .-proper .c
+ 1028  command
+ 1029  set
+ 1030  command
+ 1031  set techno.write -ableton.sound kit -life.ai/hp.omen //rite
+ 1032  command
+ 1033  set
+ 1034  set argo:covid.19 -else.15=quarantine .mod-bpm/sector.tokio -lmv.2
+ 1035  command
+ 1036  set
+ 1037  set alfa.hankook.-else{cur.e -b.signature/xorger -sargent.avp-2.0
+ 1038  command
+ 1039  set
+ 1040  set rotter.dam=raw .techno:industrial.workface -open.c+ plus.4-ok
+ 1041  command
+ 1042  set
+ 1043  set goty.progress:ground-bash .lvm.2-c.c -xorg
+ 1044  command
+ 1045  set
+ 1046  set terminal.proz -lia.rrt .du =grag.command one+.trd -rev.9/rep
+ 1047  commandd
+ 1048  command
+ 1049  set
+ 1050  history
+ 1051  set signature.epsylon one+.asus -ibm.chipset -lia.duv:comcorde
+ 1052  command
+ 1053  set
+ 1054  set bionicle.life -xrd.f -g=h .key/riot -complete..2084{execute.h
+ 1055  commandd
+ 1056  command
+ 1057  set
+ 1058  set linux.vrd=jk .duv -elex.dop /miage _vy -yakuza.name:vki -norm
+ 1059  commandd
+ 1060  command
+ 1061  set
+ 1062  set +.maschine -rg -ova.ir {config --itap.c x.org = entry
+ 1063  commandd
+ 1064  set
+ 1065  set argo.rk -.gjh 2=k y.confedeerate -yakuza.ypsilon -jsk 6 -7292
+ 1066  commandd
+ 1067  command
+ 1068  set
+ 1069  history
+ 1070  set history.6 -frk __range -runge.calculate=active.minus{shure.mic
+ 1071  commandd
+ 1072  command
+ 1073  set
+ 1074  set hap.cr -x4 .v-lim.plug -efx.eroder .trax/4.cr -eff.dr -4.0-js
+ 1075  commandd
+ 1076  set
+ 1077  history
+ 1078  set hs.story -book .dude:real.la-la _resurrenger:duty --format.b
+ 1079  ccommandd
+ 1080  command
+ 1081  set
+ 1082  set b.box ready.pulse -in.radio:activate -standard = riot.plus.one
+ 1083  commandd
+ 1084  set
+ 1085  set fformat{b.ready .cr -viola /rr.h -gg _duty.cro /root.dua .-via
+ 1086  commandd
+ 1087  set match
+ 1088  command
+ 1089  set
+ 1090  set ready.b-format a:/root ..virtual.floppy
+ 1091  commandd
+ 1092  command
+ 1093  set
+ 1094  set drug.sr -ivr _star.haven -irt _ic.2 -ilop /siop.terror .kave2
+ 1095  commandd
+ 1096  command
+ 1097  set {cur.org -rythm.irv
+ 1098  commandd
+ 1099  set
+ 1100  set command=entry.enter -os
+ 1101  commandd
+ 1102  set
+ 1103  set b.ready=blackarch{use.cutler -isop /rith.rift -consume.ex -dav
+ 1104  command
+ 1105  set
+ 1106  history
+pedroxian@pedroxian-VirtualBox:~$ 

@@ -1,0 +1,87 @@
+Found a database at /home/pedroxian/.msf4/db, checking to see if it is started
+Starting database at /home/pedroxian/.msf4/db...success
+[?] Initial MSF web service account username? [pedroxian]: y
+[?] Initial MSF web service account password? (Leave blank for random password): 
+Generating SSL key and certificate for MSF web service
+MSF web service PID file found, but no active process running as PID 2724
+Deleting MSF web service PID file /home/pedroxian/.msf4/msf-ws.pid
+Attempting to start MSF web service...failed
+[!] MSF web service appears to be started, but may not operate as expected.
+MSF web service expects authentication. If you wish to reinitialize the web service account you will need to reinitialize the database.
+Please see /home/pedroxian/.msf4/logs/msf-ws.log for additional details.
+This copy of metasploit-framework is more than two weeks old.
+ Consider running 'msfupdate' to update to the latest version.
+                                                  
+
+  Metasploit Park, System Security Interface
+  Version 4.0.5, Alpha E
+  Ready...
+  > access security
+  access: PERMISSION DENIED.
+  > access security grid
+  access: PERMISSION DENIED.
+  > access main security grid
+  access: PERMISSION DENIED....and...
+  YOU DIDN'T SAY THE MAGIC WORD!
+  YOU DIDN'T SAY THE MAGIC WORD!
+  YOU DIDN'T SAY THE MAGIC WORD!
+  YOU DIDN'T SAY THE MAGIC WORD!
+  YOU DIDN'T SAY THE MAGIC WORD!
+  YOU DIDN'T SAY THE MAGIC WORD!
+  YOU DIDN'T SAY THE MAGIC WORD!
+
+
+       =[ metasploit v5.0.89-dev-                         ]
++ -- --=[ 2017 exploits - 1098 auxiliary - 343 post       ]
++ -- --=[ 562 payloads - 45 encoders - 10 nops            ]
++ -- --=[ 7 evasion                                       ]
+
+Metasploit tip: View missing module options with show missing
+
+msf5 > history
+1   history -c
+2   set initial.brakedawn _excelor.2 =ground .k3-else.if{vurl.automatic -brave.browser _attend.py
+3   set
+4   set invalid.ip =group.inflantry -descouse...inframe:www /world.dust -complete.moments
+5   set
+6   set
+7   set aprove-standard _secu.lire -astrad
+8   set
+9   set apper.tour --contrue _leash -papped
+10  set
+11  set t.resign ressurection -b.load .t -py {curl
+12  set
+13  set city.goth -empire.build _element.class.1
+14  set
+15  set var.c{cur=h.key class.1
+16  set
+17  set c.var{=e.cur _cur.c -c
+18  set
+19  set pup.rock -as :category.global.asw = class.2-root .exec
+20  set
+21  set spod.avm2 _let.assign -life .tread -adm.intel signature.nvidia _rage:avm2
+22  set
+23  set landr got.junk else.odd -spotify.evernote _got.hits :bank.kits -soundz made workstage
+24  set
+25  set ssd.hover -.trim :execute form.a b.-format _else.if=exe
+26  set
+27  set cur{net.mask .-ipc.start .ref/r.calculate -robot.xorg=hexen
+28  set
+29  set proper.c=hexen
+30  set
+31  set hexen.proper .c cur{e -lmv --stark/rott.ai _xorg.borq .-lvm.script=hexen /hexe
+32  set
+33  set ableton.push -2.0 -version.diffficult{cur.techno=hexe:trigonorom -belt.avoid:tech
+34  set
+35  set element.class morphoder.assebly=xorg.3_else.x{cur.b -korg.es-series /blocade .tottem
+36  set
+37  set avp-2.0 oblivion.hankook _tire.effedrone :sastax /E.b-y -assign.type =root
+38  set
+39  set cr4 -apper .via -c .luna /rott ..dada:riot _shell.mata .cur {execute.proof -hexe.fex -run
+40  set
+41  set viola -fr.k -cloud.hrcz --leva.duty /warzone big.indian.car{character.ok =enter.key
+42  set
+43  set drug /heaven.sploit -irt .ic2/ir -root.database -read/write..x.org -xang.roto-irv -it
+44  set
+45  history
+msf5 > 
