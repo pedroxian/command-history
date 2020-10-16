@@ -1,0 +1,73 @@
+Found a database at /home/pedroxian/.msf4/db, checking to see if it is started
+Starting database at /home/pedroxian/.msf4/db...success
+[?] Initial MSF web service account username? [pedroxian]: y
+[?] Initial MSF web service account password? (Leave blank for random password): 
+Generating SSL key and certificate for MSF web service
+MSF web service PID file found, but no active process running as PID 5915
+Deleting MSF web service PID file /home/pedroxian/.msf4/msf-ws.pid
+Attempting to start MSF web service...failed
+[!] MSF web service appears to be started, but may not operate as expected.
+MSF web service expects authentication. If you wish to reinitialize the web service account you will need to reinitialize the database.
+Please see /home/pedroxian/.msf4/logs/msf-ws.log for additional details.
+This copy of metasploit-framework is more than two weeks old.
+ Consider running 'msfupdate' to update to the latest version.
+                                                  
+
+         .                                         .
+ .
+
+      dBBBBBBb  dBBBP dBBBBBBP dBBBBBb  .                       o
+       '   dB'                     BBP
+    dB'dB'dB' dBBP     dBP     dBP BB
+   dB'dB'dB' dBP      dBP     dBP  BB
+  dB'dB'dB' dBBBBP   dBP     dBBBBBBB
+
+                                   dBBBBBP  dBBBBBb  dBP    dBBBBP dBP dBBBBBBP
+          .                  .                  dB' dBP    dB'.BP
+                             |       dBP    dBBBB' dBP    dB'.BP dBP    dBP
+                           --o--    dBP    dBP    dBP    dB'.BP dBP    dBP
+                             |     dBBBBP dBP    dBBBBP dBBBBP dBP    dBP
+
+                                                                    .
+                .
+        o                  To boldly go where no
+                            shell has gone before
+
+
+       =[ metasploit v5.0.89-dev-                         ]
++ -- --=[ 2017 exploits - 1098 auxiliary - 343 post       ]
++ -- --=[ 562 payloads - 45 encoders - 10 nops            ]
++ -- --=[ 7 evasion                                       ]
+
+Metasploit tip: Use sessions -1 to interact with the last opened session
+
+msf5 > history
+1   history -c
+2   set russa.avp _load.tired:action.script -build.somewhere.dhabi _else.faction-3.0 -relase.boob
+3   set
+4   set epo=hex {cure -c2.c3 -class.1 _buildings/rift=human -space.eve =off.soldier -goes.baikal
+5   set
+6   set ergo.c3 2.0 -rift.omen -hd.cure :riech.pulse /propaganda.build:centre -nation.wild -e2.c3
+7   set
+8   set bionycle .stop.start:build:russa if.script -run.eu /=usa.warhead .start-.crytek
+9   set
+10  set cybrary.cc3 -else.if.mamba=2.0 -run.delete:traders /run.collage-nation /bullwarschow
+11  set
+12  set coil=bitcoin{cur .b /hexe.run _eclipse.load =hexecute ...runner.delete -root
+13  set
+14  set apeleach .-from .rad = hex.rad -run.timesecund -wars _rebleach -tift.raf _else.run.it-cop
+15  set
+16  set rot -else.java/deloy .stamp -scripting.dada:fallout -leave.ups /root.leader
+17  set
+18  set triglinuar -space.industries _cap.hollover /pull.cup=caffe .lite.b2 -klient.b6 =h.key
+19  set
+20  set triviatlon -b.ca..calcium+plus.maschine :alkaloid.trash2 ==h.key -all.group/intel.amd -k6
+21  set
+22  set valance -elve .troops/cooming.wav /mp3.download -beatport.nexus=h.key{bandcamp.ghosthack
+23  set
+24  set one.plus -ruger.x _xorg:enter=key.h{ref.enter-sight .sith/root:bios -radioactive.plus
+25  set
+26  set fgk.v -x.org /siop.una -kios /asus.mac -cold.silver .trode.troll /msi.client:ibm.chips
+27  set
+28  history
+msf5 > 
